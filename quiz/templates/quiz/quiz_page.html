@@ -1,0 +1,265 @@
+{% extends "quiz/layout.html" %}
+
+{% block body %}
+
+<!-- show if selected option is correct -->
+<div class="alert alert-success" role="alert" style="display: none !important;">
+</div>
+<!-- show if selected option is incorrect -->
+<div class="alert alert-danger" role="alert"  style="display: none !important;">
+</div>
+
+<!-- show page loading until the document is not ready -->
+<div id="loading" style="display: block !important;">
+    <div class="d-flex justify-content-center">
+        <div class="spinner-border" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </div>
+</div>
+
+<!-- To show Questions and options -->
+<div>
+    <div style="margin: 20px;">
+        <h2 id="questionid"></h2>
+    </div>
+    <div id="ans" style="margin: 20px 30px;">
+        
+    </div>
+
+    <button type="button" id="nextBtn" class="btn btn-primary" style="margin: 20px;">Next</button>
+</div>
+
+<script>
+    var noOfQuestions = 0
+    var counter = 0
+    var jsonData = {}
+
+
+    /* remove current nodes of ans */
+    document.querySelector("#nextBtn").addEventListener('click', function(){
+        if(counter+1 < noOfQuestions){
+            counter = counter+1
+            /* set alert division's display to none */
+            document.querySelector(".alert-success").style.display = "None";
+            document.querySelector(".alert-danger").style.display = "None";
+
+            /* remove the current options to load next options */
+            var ansChild = document.getElementById("ans").childNodes[1];
+            document.querySelector("#ans").removeChild(ansChild);
+            var ansChild1 = document.getElementById("ans").childNodes[1];
+            document.querySelector("#ans").removeChild(ansChild1);
+            /* if question type is multiple then remove 2 more child */
+            if(jsonData.results[counter-1].type == "multiple"){
+                var ansChild2 = document.getElementById("ans").childNodes[1];
+                document.querySelector("#ans").removeChild(ansChild2);
+                var ansChild3 = document.getElementById("ans").childNodes[1];
+                document.querySelector("#ans").removeChild(ansChild3);
+            }else{}
+            
+            displayQnas();
+        }
+        else{
+            document.querySelector("#nextBtn").innerHTML = "No more questions available";
+            document.querySelector("#nextBtn").disabled  = true;
+        }
+        
+    });
+
+    /* load all the questions and answers */
+    $(document).ready(function(e){
+        $.ajax({
+          type : "POST",
+          url : "{{ request.path }}",
+          dataType: "json",
+          data : {
+            csrfmiddlewaretoken : '{{ csrf_token }}',
+          },
+          success : function(data){
+                document.querySelector("#loading").style.display = "None";
+                noOfQuestions = data.results.length;
+                jsonData = data
+                displayQnas();
+          },
+          failure : function(){
+          }
+        });
+      });
+
+      /* display Question and options one by one */
+      function displayQnas(){
+          /* show question */
+            document.querySelector("#questionid").innerHTML = ` Question ${counter+1} : ${jsonData.results[counter].question}`;
+
+            /* place the Correct Answer */
+            let h4node = document.createElement("h4");
+            let inputnode = document.createElement("input");
+            if(jsonData.results[counter].type == "multiple"){
+                inputnode.type = "checkbox";
+            }
+            else{
+                inputnode.type = "radio";
+                inputnode.name = "answer"
+            }
+            inputnode.id = "correctAns";
+            var newlabel = document.createElement("Label");
+            newlabel.innerHTML = `${jsonData.results[counter].correct_answer}`;
+            newlabel.style.margin = "0px 10px"
+            h4node.appendChild(inputnode);
+            h4node.appendChild(newlabel);
+            document.getElementById("ans").appendChild(h4node);     
+
+            /* place the Incorrect Answer */
+            for(i = 0; i< jsonData.results[counter].incorrect_answers.length; i++){
+                let h4node = document.createElement("h4");
+                let inputnode = document.createElement("input");
+                if(jsonData.results[counter].type == "multiple"){
+                inputnode.type = "checkbox";
+                }
+                else{
+                    inputnode.type = "radio";
+                    inputnode.name = "answer"
+                }
+                inputnode.id = `incorrectAns${i}`;
+                var newlabel = document.createElement("Label");
+                newlabel.innerHTML = `${jsonData.results[counter].incorrect_answers[i]}`;
+                newlabel.style.margin = "0px 10px"
+                h4node.appendChild(inputnode);
+                h4node.appendChild(newlabel);
+                document.getElementById("ans").appendChild(h4node);
+            }
+
+            /* show all options*/
+            document.querySelector('#correctAns').addEventListener('change', function(){
+                correct(this);
+            });
+            document.querySelector('#incorrectAns0').addEventListener('change', function(){
+                incorrect(this);
+            });
+            /* show more then two options when qustion type is multiple not when boolean */
+            if(jsonData.results[counter].type == "multiple"){
+                document.querySelector('#incorrectAns1').addEventListener('change', function(){
+                incorrect(this);
+            });
+            document.querySelector('#incorrectAns2').addEventListener('change', function(){
+                incorrect(this);
+            });
+            }
+            else{}
+        }
+</script>
+
+    <form method="post" id="recordQuiz">
+        <button type="submit" style="margin: 0px 20px;" class="btn btn-outline-secondary"{% if not user.is_authenticated %} disabled {% endif %} onclick="time_taken()">Submit and Save questions and answers</button>
+    </form><br>
+    <form method="post" id="submitQuiz">
+
+    <input class="btn btn-primary" style="margin: 0px 20px;"  type="submit" value="Submit" onclick="time_taken()">
+    </form>
+
+<!-- this script run only when user want's to store quiz record -->
+<script>
+    $('#recordQuiz').on("submit", function(e){
+        e.preventDefault();
+        saveQuiz = jsonData
+        console.log(saveQuiz);
+        $.ajax({
+        type : "POST",
+        url : "{% url 'record'%}",
+        data : {
+            isForRecord : "True",
+            saveQuiz : JSON.stringify(jsonData),
+            csrfmiddlewaretoken : '{{ csrf_token }}',
+            dataType : "json",
+
+            },
+        dataType : "json",
+        beforeSend: function(x) {
+            if (x && x.overrideMimeType) {
+              x.overrideMimeType("application/j-son;charset=UTF-8");
+            }
+          },
+        success : function(data){
+            if(data.result == "ok"){
+            location.replace("{% url 'index' %}")
+            }
+            else{
+            }
+        },
+        failure : function(){
+
+        }
+        });
+    });
+</script>
+
+<!-- this script run only when user submit quiz -->
+<script>
+    $('#submitQuiz').on("submit", function(e){
+      e.preventDefault();
+
+      $.ajax({
+        type : "POST",
+        url : "{% url 'record' %}",
+        data : {
+          isForRecord : "False",
+          csrfmiddlewaretoken : '{{ csrf_token }}',
+          dataType : "json",
+
+        },
+        success : function(data){
+          if(data.result == "ok"){
+            location.replace("{% url 'index' %}")
+          }
+          else{
+          }
+        },
+        failure : function(){
+
+        }
+      });
+    });
+</script>
+
+<!-- this script run when user submit quiz to show time taken by the user and it's score -->
+<script>
+    var start, end, score=0;
+    window.onload = function(){
+        let d = new Date()
+        start = d.getSeconds();
+    }
+
+    function time_taken(){
+        let d = new Date()
+        end = d.getSeconds();
+        const str = end-start + " seconds to complete quiz and your score is " + score
+        alert(str);
+    }
+
+    function correct(checkbox){
+        if(checkbox.checked == true){
+            score += 1
+            document.querySelector(".alert-danger").style.display="none";
+            document.querySelector(".alert-success").style.display="block";
+            document.querySelector(".alert-success").innerHTML = "Correct Answer";
+        }
+        else{
+            score -= 1
+            document.querySelector(".alert-success").style.display="none";
+            document.getElementById("result").style.display="None";
+        }
+    }
+
+    function incorrect(checkbox){
+        if(checkbox.checked == true){
+            document.querySelector(".alert-success").style.display="None";
+            document.querySelector(".alert-danger").style.display="block";
+            document.querySelector(".alert-danger").innerHTML = `Inorrect answer! correct answer is "${jsonData.results[counter].correct_answer}"`;
+        }
+        else{
+            document.querySelector(".alert-danger").style.display="none";
+            document.getElementById("result").style.display="None";
+        }
+    }
+</script>
+{% endblock %}

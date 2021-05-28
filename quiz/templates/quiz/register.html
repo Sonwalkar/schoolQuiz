@@ -1,0 +1,96 @@
+{% extends "quiz/layout.html" %}
+
+{% block body %}
+<div style="padding: 10px; position: inherit;">
+  <div class="card" style=" position: inherit; max-width: 500px; margin: 10px auto;">
+    <div class="card-header text-center">
+      <h3>Create Account</h3>
+    </div>
+      <div class="card-body" style="padding:15px 5%;">
+        <div class="alert alert-warning" role="alert" id="error_msg" style="display: none;">
+        </div>
+        <form id="registerApi" method="POST">
+          <div>
+            <label class="form-label">Username</label>
+            <input autofocus style="position: inherit;" type="text" id="username" name="username" class="form-control" placeholder="Username" aria-label="Username" aria-describedby="basic-addon1" autofocus required>
+          </div>
+          <br>
+          <div>
+            <label class="form-label">Email</label>
+            <input  style="position: inherit;" type="email" id="email" name="email" class="form-control" placeholder="Email" aria-label="email" aria-describedby="basic-addon1" required>
+          </div>
+          <br>
+          <div>
+            <label class="form-label">Password</label>
+            <input style="position: inherit;" type="password" id="password" name="password" class="form-control" placeholder="password" aria-label="password" aria-describedby="basic-addon1" required>
+          </div>
+          <br>
+          <div>
+            <label class="form-label">Confirm Password</label>
+            <input style="position: inherit;" type="password" id="confirmation" name="confirmation" class="form-control" placeholder="Confirm Password" aria-label="Re-type Password" aria-describedby="basic-addon1" required>
+          </div>
+          <div>
+            Account type:
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="accountType" value="student" id="flexRadioDefault1" checked>
+              <label class="form-check-label" for="flexRadioDefault1">
+                Student
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="accountType" value="teacher" id="flexRadioDefault2" >
+              <label class="form-check-label" for="flexRadioDefault2">
+                Teacher
+              </label>
+            </div>
+          </div>
+          <br>
+          <div class="text-center">
+            <button type="submit" class="btn btn-primary" style="width: 40%;">Register</button>  
+            <a href="{% url 'login' %}" class="btn btn-outline-secondary" style="width: 40%;">Cancel</a>        
+          </div>
+        </form>
+      <br>
+      Already have an account? <a href="{% url 'login' %}">Log In here.</a>
+    </div>
+  </div>
+</div>
+
+<!-- script run when user submit the form -->
+<script>
+  $('#registerApi').on("submit", function(e){
+    e.preventDefault();
+
+    $.ajax({
+      type : "POST",
+      url : "{% url 'register' %}",
+      data : {
+        username : $('#username').val(),
+        email : $("#email").val(),
+        password : $("#password").val(),
+        confirmation : $("#confirmation").val(),
+        csrfmiddlewaretoken : '{{ csrf_token }}',
+        dataType : "json",
+
+      },
+      success : function(data){
+        /* if all ok then render index page else shows error */
+        if(data.result == "ok"){
+          location.replace("{% url 'index' %}")
+        }
+        else if(data.result == "notokpass"){
+          document.querySelector("#error_msg").style.display = "block";
+          document.querySelector("#error_msg").innerText = "password must be match";
+        }
+        else{
+          document.querySelector("#error_msg").style.display = "block";
+          document.querySelector("#error_msg").innerText = "username already taken!";
+        }
+      },
+      failure : function(){
+
+      }
+    });
+  });
+</script>
+{% endblock %}
